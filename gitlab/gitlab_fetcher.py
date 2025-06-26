@@ -1,0 +1,54 @@
+import os
+import requests
+import subprocess
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+class GitlabFetcher:
+    def __init__(self):
+        load_dotenv()
+        self.gitlab_host = os.getenv('GITLAB_HOST')
+        self.gitlab_token = os.getenv('GITLAB_TOKEN')
+
+        if not self.gitlab_host or not self.gitlab_token:
+            raise ValueError("Missing GITLAB_HOST or GITLAB_TOKEN in environment.")
+
+    def get_projects(self):
+        headers = {"PRIVATE-TOKEN": self.gitlab_token}
+
+        page = 1
+        projects = []
+        while True:
+            params = {"page": page, "per_page": 100, "membership": True}
+            response = requests.get(f"https://{self.gitlab_host}/api/v4/projects", headers=headers, params=params)
+            if not response.ok:
+                raise InterruptedError("Error fetching projects: " + str(response.text))
+
+            page_projects = response.json()
+
+            if not page_projects:
+                return projects
+
+            projects.extend(page_projects)
+            page += 1
+
+    def locally_clone_project(self, gitlab_https, target_folder):
+        subprocess.run(["git", "clone", f"https://oauth2:{self.gitlab_token}@{gitlab_https}"], cwd=target_folder)
+
+    def locally_clone_project_list(self, gitlab_https_list, target_folder):
+        for https_address in gitlab_https_list:
+            self.locally_clone_project(https_address, target_folder)
+
+    def fetch_and_locally_clone_projects(self, target_folder):
+        gitlab_projects = self.get_projects()
+        https_for_projects = self.get_https_from_json_list(gitlab_projects)
+        self.locally_clone_project_list(https_for_projects, target_folder)
+
+    @staticmethod
+    def get_https_from_json_list(project_json_list):
+        https_list = []
+        for project_json in project_json_list:
+            https_list.append(project_json["http_url_to_repo"][len("https://"):])
+        return https_list

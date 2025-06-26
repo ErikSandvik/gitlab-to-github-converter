@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from gitlab.fetch_projects import fetch_and_locally_clone_projects
+from gitlab.gitlab_fetcher import fetch_and_locally_clone_projects
 
 load_dotenv()
 
