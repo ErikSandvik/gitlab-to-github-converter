@@ -2,29 +2,37 @@ import os
 
 from dotenv import load_dotenv
 
-from gitlab.gitlab_fetcher import fetch_and_locally_clone_projects
-
-load_dotenv()
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from gitlab.gitlab_fetcher import GitlabFetcher
+from github.github_pusher import push_project_list_to_github
 
 
-def load_gitlab_token():
-    gitlab_token = os.getenv("GITLAB_TOKEN")
+def check_if_environment_variables():
+    load_dotenv()
+    if os.getenv("GITHUB_TOKEN") is None:
+        print("GITHUB_TOKEN environment variable not set")
+        return False
+    if os.getenv("GITHUB_USER") is None:
+        print("GITHUB_USER environment variable not set")
+        return False
+    if os.getenv("GITLAB_TOKEN") is None:
+        print("GITLAB_TOKEN environment variable not set")
+        return False
+    return True
 
-    if gitlab_token is None:
-        raise ValueError("GITLAB_TOKEN environment variable is not set")
 
-    return gitlab_token
+def convert_gitlab_projects_to_github():
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    clone_dir = os.path.join(project_root, "cloned_projects")
+
+    gitlab_fetcher = GitlabFetcher()
+    gitlab_fetcher.fetch_and_locally_clone_projects(clone_dir)
+    push_project_list_to_github(gitlab_fetcher.get_names_from_json_list())
 
 
-# Press the green button in the gutter to run the script.
+def main():
+    if check_if_environment_variables():
+        convert_gitlab_projects_to_github()
+
+
 if __name__ == '__main__':
-    folder_path = r"cloned_projects"
-    host = "gitlab.stud.idi.ntnu.no"
-    fetch_and_locally_clone_projects(host, load_gitlab_token(), folder_path)
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    main()
